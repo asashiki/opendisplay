@@ -392,7 +392,7 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
         // launch — the permission panel's Grant button triggers the system
         // dialog, so the request always has visible context.
         if !CGPreflightScreenCaptureAccess() {
-            await status("Screen Recording permission needed — see Permissions below")
+            await status(String(localized: "Screen Recording permission needed — see Permissions below"))
             Log.info("Screen Recording permission missing — waiting for grant via the permission panel")
             while !CGPreflightScreenCaptureAccess() {
                 try await Task.sleep(for: .seconds(2))
@@ -448,7 +448,7 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
             // streaming works without it, so don't interrupt with a prompt —
             // the permission panel's Grant button asks when the user is ready.
             if !AXIsProcessTrusted() {
-                await status("Extending — grant Accessibility for touch input")
+                await status(String(localized: "Extending — grant Accessibility for touch input"))
                 // Event posting is trust-checked per-post, so it starts working
                 // the moment the user grants — poll just to log/report it.
                 while !AXIsProcessTrusted() {
@@ -774,7 +774,7 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
                     break
                 }
                 Log.info("virtual display creation failed (identity +\(totalOffset), attempt \(attempt + 1)) — retrying")
-                await status("Preparing virtual display…")
+                await status(String(localized: "Preparing virtual display…"))
             }
             guard let candidate = created else { continue }
             virtualDisplay = candidate
@@ -802,7 +802,7 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
                 sawPoisonedIdentity = true
                 if stopped { return }
                 Log.info("virtual display (identity +\(totalOffset)) never came online — trying a fresh identity")
-                await status("Display blocked by saved macOS state — trying a fresh identity…")
+                await status(String(localized: "Display blocked by saved macOS state — trying a fresh identity…"))
             }
         }
         guard let vd, let display else {
@@ -958,7 +958,7 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
             } catch {
                 if error is CancellationError { return }
                 Log.info("reconfigure failed: \(error)")
-                await status("Stream reconfiguration failed: \(error.localizedDescription)")
+                await status(String(localized: "Stream reconfiguration failed: \(error.localizedDescription)"))
                 return
             }
             guard let pending = lastHello,
@@ -1395,7 +1395,11 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
         }
         Log.info("capture started: \(pixelsWide)x\(pixelsHigh) display \(display.displayID) generation \(generation) mode \(mode.rawValue) localCursor=\(localCursor)")
         let kind = lastHello?.kind ?? "device"
-        await status("\(mode == .extend ? "Extending to" : "Mirroring to") \(kind) (\(pixelsWide)×\(pixelsHigh))")
+        if mode == .extend {
+            await status(String(localized: "Extending to \(kind) (\(pixelsWide)×\(pixelsHigh))"))
+        } else {
+            await status(String(localized: "Mirroring to \(kind) (\(pixelsWide)×\(pixelsHigh))"))
+        }
     }
 
     func stop() {
@@ -1558,7 +1562,7 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
             Task { @MainActor in self.onCaptureStoppedByUser?() }
             return
         }
-        Task { await status("Capture stopped: \(error.localizedDescription)") }
+        Task { await status(String(localized: "Capture stopped: \(error.localizedDescription)")) }
         // E.g. display sleep can tear the virtual display down underneath the
         // stream — rebuild instead of sitting dead until an app restart.
         guard !stopped, mode == .extend else { return }
@@ -1669,7 +1673,7 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
         }
         captureRecoveryFailures += 1
         guard captureRecoveryFailures < maxCaptureRecoveryFailures else {
-            Task { await status("Capture could not be restarted") }
+            Task { await status(String(localized: "Capture could not be restarted")) }
             reportGone("capture recovery failed \(captureRecoveryFailures)x — ending session")
             return
         }
@@ -1779,7 +1783,7 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
         } else {
             stopUpgradeProbing()   // already off WiFi — nothing better to find
         }
-        Task { await self.status("Connected to \(self.endpointName)") }
+        Task { await self.status(String(localized: "Connected to \(self.endpointName)")) }
     }
 
     // MARK: - Cable upgrade (PROTOCOL.md 6.4)
@@ -2167,7 +2171,7 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
                 }
             } else {
                 disconnectedSince = Date()
-                Task { await status("Connection lost — retrying for \(Int(disconnectGraceSeconds))s…") }
+                Task { await status(String(localized: "Connection lost — retrying for \(Int(disconnectGraceSeconds))s…")) }
             }
         }
         connectionReady = false
@@ -2233,7 +2237,7 @@ final class MacSender: NSObject, SCStreamOutput, SCStreamDelegate {
                     Log.info("watchdog: nothing from the phone for >5s — reconnecting")
                     // Can't tell a backgrounded receiver from a brief stall here
                     // (both go silent while redials still succeed) — hedge.
-                    Task { await self.status("\(self.endpointName) is silent — keeping the display (app in background or brief stall)") }
+                    Task { await self.status(String(localized: "\(self.endpointName) is silent — keeping the display (app in background or brief stall)")) }
                     self.scheduleReconnect()
                 }
             }

@@ -25,7 +25,7 @@
 "Best" = "最佳";
 "Balanced" = "均衡";
 "Fast" = "流畅";
-"Highest safe detail for this sender and display." = "这台发送端和这块屏幕上最安全的最高清晰度。";
+"Highest safe detail for this sender and display." = "优先保留画面细节，使用这台 Mac 和显示器支持的最高清晰度。";
 "Lower capture resolution for less latency and bandwidth." = "降低采集分辨率，换取更低延迟和带宽。";
 "Lowest latency and bandwidth, with a softer image. Good for WiFi." = "最低延迟和带宽，画面偏软。适合 WiFi。";
 
@@ -100,3 +100,6 @@
 "Check for Updates…" = "检查更新…";
 "FPS" = "帧率";
 "%lld" = "%lld";
+
+"Touch leaves the pointer where it was" = "触摸后保留鼠标原位";
+"Touching a device hides the pointer there; your mouse or trackpad picks up where you left it." = "触摸平板时隐藏指针。再次使用鼠标或触控板时，指针会回到原来的位置。";

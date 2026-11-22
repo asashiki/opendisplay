@@ -42,8 +42,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     // run; the menu item drives manual "Check for Updates…". Held for the
     // app's lifetime here so every window (menu bar + control window) shares
     // one updater instance.
+    #if DEBUG
+    // Preview builds have their own identity and update independently of the stable feed.
+    let updater: SPUStandardUpdaterController? = nil
+    #else
     let updater = SPUStandardUpdaterController(
         startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+    #endif
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Hand the updater to the control window, which is built outside the

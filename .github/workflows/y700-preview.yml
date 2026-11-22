@@ -1,0 +1,32 @@
+name: Build touch preview
+on:
+  push:
+    branches: [y700-touch]
+    paths:
+      - 'Mac/**'
+      - 'Shared/**'
+      - 'project.yml'
+      - '.github/workflows/y700-preview.yml'
+permissions:
+  contents: read
+jobs:
+  mac:
+    runs-on: macos-26
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - run: command -v xcodegen || brew install xcodegen
+      - run: xcodegen generate
+      - name: Build the independent Mac sender
+        run: |
+          xcodebuild -quiet -scheme OpenSidecarMac -configuration Debug -derivedDataPath build -destination 'platform=macOS' CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" ENABLE_DEBUG_DYLIB=NO build
+          app='build/Build/Products/Debug/OpenDisplay Dev.app'
+          test -s "$app/Contents/Resources/zh-Hans.lproj/Localizable.strings"
+          codesign --force --sign - --requirements '=designated => identifier "com.peetzweg.opensidecar.mac.debug"' --entitlements Mac/OpenSidecarMac.entitlements "$app"
+          codesign --verify --deep --strict "$app"
+          ditto -c -k --keepParent "$app" OpenDisplay-Dev.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: touch-mac
+          path: OpenDisplay-Dev.zip
+          retention-days: 7

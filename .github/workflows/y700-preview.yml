@@ -19,12 +19,15 @@ jobs:
       - run: xcodegen generate
       - name: Build the independent Mac sender
         run: |
-          xcodebuild -quiet -scheme OpenSidecarMac -configuration Debug -derivedDataPath build -destination 'platform=macOS' CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" ENABLE_DEBUG_DYLIB=NO build
+          xcodebuild -quiet -scheme OpenSidecarMac -configuration Debug -derivedDataPath build -destination 'platform=macOS' CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" MARKETING_VERSION=1.30.3 CURRENT_PROJECT_VERSION=1 ENABLE_DEBUG_DYLIB=NO build
           app='build/Build/Products/Debug/OpenDisplay Dev.app'
           test -s "$app/Contents/Resources/zh-Hans.lproj/Localizable.strings"
           codesign --force --sign - --requirements '=designated => identifier "com.peetzweg.opensidecar.mac.debug"' --entitlements Mac/OpenSidecarMac.entitlements "$app"
           codesign --verify --deep --strict "$app"
           ditto -c -k --keepParent "$app" OpenDisplay-Dev.zip
+      - name: Verify system actions, scrolling and pointer handoff
+        run: |
+          xcodebuild -quiet test -scheme OpenSidecarMac -configuration Debug -derivedDataPath build -destination 'platform=macOS' CODE_SIGN_IDENTITY="-" DEVELOPMENT_TEAM="" MARKETING_VERSION=1.30.3 CURRENT_PROJECT_VERSION=1 ENABLE_DEBUG_DYLIB=NO -only-testing:OpenSidecarMacTests/SystemActionTests -only-testing:OpenSidecarMacTests/PointerHandoffTests -only-testing:OpenSidecarMacTests/ScrollPhaserTests -only-testing:OpenSidecarMacTests/ScrollSmootherTests
       - uses: actions/upload-artifact@v4
         with:
           name: touch-mac

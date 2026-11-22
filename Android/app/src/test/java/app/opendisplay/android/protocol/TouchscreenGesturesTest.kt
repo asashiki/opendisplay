@@ -32,6 +32,8 @@ class TouchscreenGesturesTest {
                 override fun magnify(phase: String, m: Double) {
                     events.add("magnify $phase %.2f".format(Locale.ROOT, m))
                 }
+                override fun availableActions() = listOf("spaceRight", "spaceLeft", "missionControl", "appExpose")
+                override fun systemAction(action: String) { events.add(action) }
                 override fun holdArmed() {
                     events.add("armed")
                 }
@@ -61,6 +63,38 @@ class TouchscreenGesturesTest {
     }
 
     private fun p(px: Float, py: Float, t: Long = clock) = TouchGestures.Point(px, py, px / 1000.0, py / 1000.0, t)
+
+    @Test
+    fun extraFingersTakeOverAndOnlySendOneAction() {
+        for ((dx, dy, action) in listOf(Triple(-80f, 0f, "spaceRight"), Triple(82f, 4f, "spaceLeft"),
+                Triple(0f, -90f, "missionControl"), Triple(3f, 85f, "appExpose"))) {
+            for (count in 3..4) {
+                g.down(p(10f, 10f))
+                for (n in 2..count) g.pointerDown(n, p(50f*n, 100f), 80f)
+                events.clear()
+                val end = p(50f*count + dx, 100f + dy)
+                g.move(count, end, end, 1f)
+                repeat(count - 1) { g.pointerUp(end) }
+                g.up(end)
+                assertEquals(listOf(action), events)
+            }
+        }
+    }
+
+    @Test
+    fun cancelledOrDiagonalSwipesDoNotTurnIntoClicks() {
+        for (cancel in listOf(false, true)) {
+            val start = p(100f, 100f)
+            g.down(start)
+            g.pointerDown(2, start, 80f)
+            g.pointerDown(3, start, 80f)
+            events.clear()
+            val end = p(200f, if (cancel) 100f else 200f)
+            g.move(3, end, end, 1f)
+            if (cancel) g.cancel() else { g.pointerUp(end); g.pointerUp(end); g.up(end) }
+            assertTrue(events.isEmpty())
+        }
+    }
 
     @Test
     fun tapMovesThePointerThenClicks() {

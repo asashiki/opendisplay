@@ -1,0 +1,33 @@
+name: Build Android touch preview
+on:
+  push:
+    branches: [y700-touch]
+    paths: ['Android/**', '.github/workflows/y700-android.yml']
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+      - name: Build and test Android receiver
+        working-directory: Android
+        run: ./gradlew --no-daemon testDebugUnitTest assembleDebug -PappVersionName=1.30.3-touch.1
+      - name: Check Android package and signature
+        run: |
+          build_tools=$(ls -d "$ANDROID_HOME"/build-tools/* | sort -V | tail -1)
+          apk=Android/app/build/outputs/apk/debug/app-debug.apk
+          "$build_tools/apksigner" verify "$apk"
+          "$build_tools/aapt" dump badging "$apk" > "$RUNNER_TEMP/badging"
+          grep -F "name='com.peetzweg.opendisplay.debug'" "$RUNNER_TEMP/badging"
+          grep -i "zh-Hans\|zh-.*Hans" "$RUNNER_TEMP/badging" | head -c 1000
+      - uses: actions/upload-artifact@v4
+        with:
+          name: touch-android
+          path: Android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7

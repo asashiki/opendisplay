@@ -49,6 +49,8 @@ class TouchGestures(
         fun magnify(phase: String, m: Double) {}
         /** A hold armed: moving now drags, lifting is a secondary click. Time for a haptic. */
         fun holdArmed() {}
+        fun availableActions(): List<String> = emptyList()
+        fun systemAction(action: String) {}
     }
 
     fun interface Cancellable {
@@ -107,7 +109,15 @@ class TouchGestures(
 
     private val momentum = Momentum()
 
+    // Reserve the whole contact sequence once three fingers take over. Otherwise
+    // releasing the remaining fingers can send a stray right-click or scroll.
+    private var systemSwipe = false
+    private var swipeStart: Point? = null
+    private var swipeEnd: Point? = null
+    private var swipeFinished = false
+
     fun down(p: Point) {
+        systemSwipe = false
         momentum.stop()
         twoFinger = false
         lastCentroid = null
@@ -124,6 +134,18 @@ class TouchGestures(
 
     /** A further finger landed; [centroid] of all fingers down now, [span] between the first two. */
     fun pointerDown(pointerCount: Int, centroid: Point, span: Float = 0f) {
+        if (systemSwipe || (pointerCount >= 3 && mode.touchscreen && output.availableActions().isNotEmpty())) {
+            if (!systemSwipe) {
+                cancel()
+                systemSwipe = true
+                swipeFinished = false
+            }
+            if (pointerCount > 4) swipeFinished = true
+            // A fourth finger changes the centroid even when no finger moved.
+            swipeStart = centroid
+            swipeEnd = centroid
+            return
+        }
         if (downSent) lastNorm?.let { output.touch("cancelled", it.nx, it.ny) }
         if (intent == Intent.SCROLLING) endPhasedScroll(lift = null)
         discardPendingDown()
@@ -148,6 +170,11 @@ class TouchGestures(
      * one is a secondary click). [p] carries the lift time.
      */
     fun pointerUp(p: Point? = null) {
+        if (systemSwipe) {
+            if (!swipeFinished) finishSystemSwipe()
+            swipeFinished = true
+            return
+        }
         lastCentroid = null
         if (!twoFinger) return
         when (twoFingerIntent) {
@@ -171,6 +198,10 @@ class TouchGestures(
      * screen pixels per video pixel, [span] the distance between the first two.
      */
     fun move(pointerCount: Int, primary: Point, centroid: Point, videoScale: Float, span: Float = 0f) {
+        if (systemSwipe) {
+            if (!swipeFinished) swipeEnd = centroid
+            return
+        }
         if (videoScale > 0f) lastVideoScale = videoScale
         if (twoFinger) {
             if (pointerCount < 2) return
@@ -205,7 +236,27 @@ class TouchGestures(
         if (downSent) output.touch("moved", primary.nx, primary.ny)
     }
 
+    private fun finishSystemSwipe() {
+        val start = swipeStart ?: return
+        val end = swipeEnd ?: return
+        val dx = end.px - start.px
+        val dy = end.py - start.py
+        val threshold = dragSlopPx * 4.8f // 48 dp
+        val action = when {
+            abs(dx) >= threshold && abs(dx) > abs(dy) * 1.35f ->
+                if (dx < 0) "spaceRight" else "spaceLeft"
+            abs(dy) >= threshold && abs(dy) > abs(dx) * 1.35f ->
+                if (dy < 0) "missionControl" else "appExpose"
+            else -> return
+        }
+        if (action in output.availableActions()) output.systemAction(action)
+    }
+
     fun up(p: Point) {
+        if (systemSwipe) {
+            systemSwipe = false
+            return
+        }
         if (twoFinger) {
             if (twoFingerIntent != TwoFinger.DONE) pointerUp(p)
             twoFinger = false
@@ -224,6 +275,7 @@ class TouchGestures(
     }
 
     fun cancel() {
+        systemSwipe = false
         if (intent == Intent.SCROLLING) endPhasedScroll(lift = null)
         if (twoFinger) {
             when (twoFingerIntent) {

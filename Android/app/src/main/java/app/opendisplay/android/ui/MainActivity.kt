@@ -142,6 +142,8 @@ class MainActivity : AppCompatActivity(), ReceiverServer.Listener, VideoDecoder.
                 override fun phasedScroll(dx: Double, dy: Double, phase: String) =
                     server.sendScroll(dx, dy, phase)
                 override fun magnify(phase: String, m: Double) = server.sendMagnify(phase, m)
+                override fun availableActions() = actionsButton.actions
+                override fun systemAction(action: String) = server.sendGesture(action)
                 override fun holdArmed() {
                     root.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
                 }
@@ -207,7 +209,9 @@ class MainActivity : AppCompatActivity(), ReceiverServer.Listener, VideoDecoder.
     }
 
     /** "phone" / "tablet" for UI text, like iOS's iPhone / iPad. */
-    private fun uiKind() = DeviceIdentity.deviceKind(this).removePrefix("Android ")
+    private fun uiKind() = getString(
+        if (resources.configuration.smallestScreenWidthDp >= 600) R.string.device_tablet else R.string.device_phone
+    )
 
     private fun showSettings() {
         if (supportFragmentManager.findFragmentByTag(SETTINGS) != null) return
